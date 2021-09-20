@@ -1,9 +1,8 @@
 {
   "name":"stop-on-red",
   "author":"DaveMcW",
-  "version":"0.0.1",
+  "version":"0.0.2",
   "title":"Stop on Red",
-  "homepage":"",
   "description":"Forces player driven trains to stop at red signals.",
   "dependencies": ["base"],
   "factorio_version": "1.1"
