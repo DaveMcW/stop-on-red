@@ -166,14 +166,15 @@ end
 function start_control(train)
   -- Are we already controlling it?
   for i = 1, #global.trains do
-    local old_train = global.trains[i].train
-    if old_train and old_train.valid and old_train.id == train.id then return end
+    if train == global.trains[i].train then return end
   end
+
+  -- Is there a driver?
+  local driver = get_driver(train)
+  if not driver then return end
+
   -- Add to list of controlled trains
-  table.insert(global.trains, {
-    train = train,
-    driver = get_driver(train),
-  })
+  table.insert(global.trains, {train = train, driver = driver})
 end
 
 script.on_init(on_init)
