@@ -91,8 +91,8 @@ function on_tick()
 end
 
 function on_train_changed(event)
-  if event.train and event.train.valid and event.train.state == defines.train_state.manual_mode then
-    start_control(train)
+  if event.train and event.train.valid and event.train.state == defines.train_state.manual_control then
+    start_control(event.train)
   end
 end
 
@@ -164,6 +164,11 @@ function get_next_signal(train)
 end
 
 function start_control(train)
+  -- Are we already controlling it?
+  for i = 1, #global.trains do
+    local old_train = global.trains[i].train
+    if old_train and old_train.valid and old_train.id == train.id then return end
+  end
   -- Add to list of controlled trains
   table.insert(global.trains, {
     train = train,

@@ -1,7 +1,7 @@
 {
   "name":"stop-on-red",
   "author":"DaveMcW",
-  "version":"0.0.3",
+  "version":"0.0.4",
   "title":"Stop on Red",
   "description":"Forces player driven trains to stop at red signals.",
   "dependencies": ["base"],
