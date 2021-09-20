@@ -1,5 +1,38 @@
 require "util"
 
+-- Constant tables
+-- Indexing a constant table is faster than creating a new one
+local RAIL_STRAIGHT = {
+  [defines.rail_direction.front] = {
+    rail_direction = defines.rail_direction.front,
+    rail_connection_direction = defines.rail_connection_direction.straight,
+  },
+  [defines.rail_direction.back] = {
+    rail_direction = defines.rail_direction.back,
+    rail_connection_direction = defines.rail_connection_direction.straight,
+  },
+}
+local RAIL_RIGHT = {
+  [defines.rail_direction.front] = {
+    rail_direction = defines.rail_direction.front,
+    rail_connection_direction = defines.rail_connection_direction.right,
+  },
+  [defines.rail_direction.back] = {
+    rail_direction = defines.rail_direction.back,
+    rail_connection_direction = defines.rail_connection_direction.right,
+  },
+}
+local RAIL_LEFT = {
+  [defines.rail_direction.front] = {
+    rail_direction = defines.rail_direction.front,
+    rail_connection_direction = defines.rail_connection_direction.left,
+  },
+  [defines.rail_direction.back] = {
+    rail_direction = defines.rail_direction.back,
+    rail_connection_direction = defines.rail_connection_direction.left,
+  },
+}
+
 function on_init()
   global.trains = {}
 end
@@ -9,48 +42,50 @@ function on_tick()
     local train = global.trains[i]
 
     -- Do we still have control of the train?
-    if not is_manual_driven(train) then
+    if is_manual_driven(train) then
+
+      -- Already stopped
+      train = train.train
+      if train.speed == 0 then return end
+
+      -- No protection while reversing a one-way train
+      if train.speed < 0
+      and train.front_stock.speed < 0
+      and train.back_stock.speed < 0 then
+        return
+      end
+
+      -- Look for red signal
+      local signal = get_next_signal(train)
+      if not signal then return end
+
+      -- rendering.draw_circle{
+      --   color = {0, 1, 0},
+      --   radius = 1,
+      --   width = 10,
+      --   target = signal,
+      --   surface = signal.surface,
+      --   time_to_live = 2,
+      -- }
+
+      if not (signal.type == "rail-signal" or signal.type == "rail-chain-signal") then return end
+      if signal.signal_state == defines.signal_state.open then return end
+
+      -- Wait for the train to reach the red signal
+      local carriage = train.front_stock
+      if train.speed < 0 then
+        carriage = train.back_stock
+      end
+      local distance = util.distance(signal.position, carriage.position)
+
+      -- Stop the train
+      if distance < math.abs(train.speed) + 4 then
+        train.speed = 0
+      end
+
+    else
+      -- Lost control
       table.remove(global.trains, i)
-      return
-    end
-
-    -- Already stoppd
-    train = train.train
-    if train.speed == 0 then return end
-
-    -- Reversing a one-way train is allowed
-    if train.speed < 0
-    and train.front_stock.speed < 0
-    and train.back_stock.speed < 0 then
-      return
-    end
-
-    -- Look for red signal
-    local signal = get_next_signal(train)
-    if not signal then return end
-
-    -- rendering.draw_circle{
-    --   color = {0, 1, 0},
-    --   radius = 1,
-    --   width = 10,
-    --   target = signal,
-    --   surface = signal.surface,
-    --   time_to_live = 2,
-    -- }
-
-    if not (signal.type == "rail-signal" or signal.type == "rail-chain-signal") then return end
-    if signal.signal_state == defines.signal_state.open then return end
-
-    -- Wait for the train to reach the red signal
-    local carriage = train.front_stock
-    if train.speed < 0 then
-      carriage = train.back_stock
-    end
-    local distance = util.distance(signal.position, carriage.position)
-
-    -- Stop the train
-    if distance < math.abs(train.speed) + 4 then
-      train.speed = 0
     end
   end
 end
@@ -109,16 +144,9 @@ function get_next_signal(train)
 
   -- Signal is attached to the beginning of the next segment
   rail, rail_direction = rail.get_rail_segment_end(rail_direction)
-  local next_rail = rail.get_connected_rail{
-    rail_direction = rail_direction,
-    rail_connection_direction = defines.rail_connection_direction.straight
-  } or rail.get_connected_rail{
-    rail_direction = rail_direction,
-    rail_connection_direction = defines.rail_connection_direction.left
-  } or rail.get_connected_rail{
-    rail_direction = rail_direction,
-    rail_connection_direction = defines.rail_connection_direction.right
-  }
+  local next_rail = rail.get_connected_rail(RAIL_STRAIGHT[rail_direction])
+    or rail.get_connected_rail(RAIL_LEFT[rail_direction])
+    or rail.get_connected_rail(RAIL_RIGHT[rail_direction])
 
   if not next_rail then return end
 
