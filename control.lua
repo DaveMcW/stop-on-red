@@ -39,55 +39,56 @@ end
 
 function on_tick()
   for i = #global.trains, 1, -1 do
-    local train = global.trains[i]
-
     -- Do we still have control of the train?
-    if is_manual_driven(train) then
-
-      -- Already stopped
-      train = train.train
-      if train.speed == 0 then return end
-
-      -- No protection while reversing a one-way train
-      if train.speed < 0
-      and train.front_stock.speed < 0
-      and train.back_stock.speed < 0 then
-        return
-      end
-
-      -- Look for red signal
-      local signal = get_next_signal(train)
-      if not signal then return end
-
-      -- rendering.draw_circle{
-      --   color = {0, 1, 0},
-      --   radius = 1,
-      --   width = 10,
-      --   target = signal,
-      --   surface = signal.surface,
-      --   time_to_live = 2,
-      -- }
-
-      if not (signal.type == "rail-signal" or signal.type == "rail-chain-signal") then return end
-      if signal.signal_state == defines.signal_state.open then return end
-
-      -- Wait for the train to reach the red signal
-      local carriage = train.front_stock
-      if train.speed < 0 then
-        carriage = train.back_stock
-      end
-      local distance = util.distance(signal.position, carriage.position)
-
-      -- Stop the train
-      if distance < math.abs(train.speed) + 4 then
-        train.speed = 0
-      end
-
+    if is_manual_driven(global.trains[i]) then
+      on_tick_train(global.trains[i].train)
     else
-      -- Lost control
       table.remove(global.trains, i)
     end
   end
+end
+
+function on_tick_train(train)
+  -- Already stopped
+  if train.speed == 0 then
+    return
+  end
+
+  -- No protection while reversing a one-way train
+  if train.speed < 0
+  and train.front_stock.speed < 0
+  and train.back_stock.speed < 0 then
+    return
+  end
+
+  -- Look for signal
+  local signal = get_next_signal(train)
+  if not signal then
+    return
+  end
+
+  -- Look for rail signal
+  if signal.type ~= "rail-signal" and signal.type ~= "rail-chain-signal" then
+    return
+  end
+
+  -- Green signal
+  if signal.signal_state == defines.signal_state.open then
+    return
+  end
+
+  -- Wait for the train to reach the red signal
+  local carriage = train.front_stock
+  if train.speed < 0 then
+    carriage = train.back_stock
+  end
+  local distance = util.distance(signal.position, carriage.position)
+  if distance > math.abs(train.speed) + 4 then
+    return
+  end
+
+  -- Stop the train
+  train.speed = 0
 end
 
 function on_train_changed(event)
